@@ -6,4 +6,145 @@ Goldstein-Price를 사용하여 복잡한 식을 미분하게 도와준다.
 시각화가 필요한이유는 복잡한식의 미분이 된것이 잘못됬거나 신경망 구조가 어떻게 생겼는지 전달할 수 있게하기 위해서이다.
 sample -T 는 에디터이다. 
 T파일에는 형식 O에는 출력할 파일을 넣는다.
-뉴턴 미분은 2차 미분도 가능하다 .
+뉴턴 미분은 2차 미분도 가능하다.
+6주차 고차미분
+자동적으로 계산하기 위해 Dezero를 사용하는 것이다
+이전 주차까지의 역전파 구현 방식을 재검토를 진행해야 한다. 
+Variable 클래스의 __init__메서드는 data와grad는 모드 ndarray인스턴스로 저장된다. 
+순접파 시에는 데이터 값이 채워지고 역전파시에는 grad값이 채워진다는 것을 알 수 있다.
+Function 클래스의 __call__메서드는 순전파시에 메인 처리를 하며 input값을 받아서 x 값을 만든 후 
+input값에 돌아오는 각각의 값을 x에 담아서 forward에 담아 각각 계산했다. 
+sin클래스 코드에서 forward 메서드를 진행하면서 평션 클래스의 콜 메서드가 만들어지고 순전파의 그래프를 만들어준다 
+역전파는 backward메서드를 사용하여 grad 리스트르 모아서 sin*grad하여 기울기 값을 추출할 수 있었다. 
+순정파일때 계산그래프 역전파에서 sin의 backward를 만들어 냄
+-----------------------------------------------
+계산은 __call__메서드에서 만들어지고 순전파에서만 만들어 지고 역전파에서는 안만들어진다. (핵심)
+역전파 시에는 그래프를 만들지 않았기 때문에 그 다음 2차 3차 n차 로 안된다. 이유 ndarray를 사용하지 않기 때문에
+허나 역전파에도 연결이 만들기 위해 진행하면 된다.
+계산식의 ndarray를 사용하기 위해 Variable으로 변경을 해야한다. 
+방법은 2가지가 있다. 
+gx.backward()를 호출해서 x의 2차 미분이 가능하다. = 계산만 하지 않고 그래프를 만드는 것 
+sin을 Variable으로 만들 계산 그래프를 제작 한다.
+Fubction 는 수정할 필오 없다 허나 Add, Mul, neg 클래스 등등의 backward메서드만 수정한다.
+역전파가 필요하지 않는 경우 비활성화 하여 무시하게 한다. create_grapth = True 일 경우 2차 미분 이상이 사용돠고
+ False일 경우 무시가 진행된다. 
+with useing_config('enable_backprop", create_graph) creat_graph값이 있을 경우 계산된다.
+2차 미분을 자동하기 위해 
+def f(x):
+  y = x **4 -2 *x **2
+  return y
+
+x = Variable(np.array(2,0))
+y = f(x)
+y.backward(create_graph= True)
+print(x.grad) # 1차미분 
+
+gx = x.grad
+gx.backward()
+print(x.grad) # 2차 미분 
+결과값 variable(24.0)
+     variable(68.0)
+--------------------------
+def f(x):
+  y = x **4 -2 *x **2
+  return y
+
+x = Variable(np.array(2,0))
+y = f(x)
+y.backward(create_graph= True)
+print(x.grad) # 1차미분 
+
+gx = x.grad
+x.cleargrad() # 메모리가 덮이는 것을 삭제 
+gx.backward()
+print(x.grad) # 2차 미분 
+결과값 variable(24.0)
+     variable(44.0)
+-------------------------------
+
+
+
+
+
+
+--------------------------------
+import numpy as np
+from dezero.core import Function
+class Sin(Function):
+  def forward(self,x):
+    y = np.sin(x)
+    return y  # 1차 미분 
+
+    def backward(self, gy):
+      x = self.inputs
+      gx = gy*cos(x)
+      return gx  # 2차 미분
+
+def sin(x):
+  return Sin()(x)
+-------------------------------
+sin 함수 고차 미분 
+
+import numpy as np
+from dezero.core import Function
+import dezero.functions as F
+
+
+x = Variable(np.array(1,0))
+y = F.sin(x)
+t.backward(create_graph= True) # 3차/4차까지 구해보는 거 
+
+for i in range(3):
+  gx = x.grad
+  x.cleargrad()
+  gx.vackward(create_graph = True)
+  print(gx)
+gx의 backward값을 계산하면 Variable 인스턴스 값으로 구하기 때문에 create = True 를 하면
+그래프를 만들어준다. 그렇기에 2차미분이 시행됨 1차에선 cos 2차에선 -sin으로 진행
+이렇기에 고차 미분을 자동적으로 시행이 가능하다.
+matplotlib을 사용해서 시각화를 진행해 본다.
+tanh 함수는 결국 0과 -1 ,1 사이값으로 나온다
+
+import numpy as np
+from dezero.core import Function
+
+class Tang(Function):
+  def forward(self, x):
+    y = np.tanh(x)
+    return y
+
+  def backward(self, gy):
+    x, self.outputs[0]()
+    gx = gy* (1-y*y)
+    return gx
+
+def tanh(x):
+  return Tanh()(x)
+n차 미분값이 나오도록 구현한다.
+tanh 의 고차 미분 예시
+------------------------------------------
+import numpy as np
+from dezero import Variable
+from dezero.utils import plot_dot_graph
+import dezero.functions as F
+
+x = Variable(np.array(1,0))
+y = F.tanh(x)
+x.name = 'x'
+y.name = 'y'
+y.backward(create_graph = True)
+
+iters = 0
+
+for i in range(iters):
+  gx = x.grad
+  x.cleargrad()
+  gx.backward(create_graph = True)
+
+  gx = x.grad
+  gx.name = 'gx' + str(iters +1)
+  plot_dot_graph(gx, verbose = False, to_file= 'tanh.png')
+iters = n  =   n+1 만큼 미분이 되는 것이다. 
+고차 미분을 위해 역전파시에 수행 되는 것에도 계속 연결을 시켰다.
+만든 미분값들을 그중 tanh함수를 사용하고 시각화 하니 매우 많은 그래프를 보게 되었다. 
+활용 방법으로는 Double Backpropagation이 있다.
