@@ -1,12 +1,240 @@
 5주차
 복잡한 미분을 보면 DeZero에서 대표적인 연산자를 진행했다.
 Sphere함수 z = x^2 + Y^2 
-matyas는 미분이 잘 되고 있는지 확인하기 위함이다.    
+matyas는 미분이 잘 되고 있는지 확인하기 위함이다. 
 Goldstein-Price를 사용하여 복잡한 식을 미분하게 도와준다.
+수행 코드는 
+def goldstein(x,y):
+  z = (1 +( x+ y+ 1**2 * (19 - 14*x + 3*x**2 - 14*y + 6*x*y + 3*y**2)) * 
+       w(30 + (2*x -3*y)**2 * (18 -32 *x +12*x**2+48*y - 36*x*y +27*y**2))
+  return z 
+를 사용한다. 
 시각화가 필요한이유는 복잡한식의 미분이 된것이 잘못됬거나 신경망 구조가 어떻게 생겼는지 전달할 수 있게하기 위해서이다.
 sample -T 는 에디터이다. 
 T파일에는 형식 O에는 출력할 파일을 넣는다.
 뉴턴 미분은 2차 미분도 가능하다.
+윈도우용 Graphviz를 설치한다. 
+그후 DOT 언어로 그래프를 그릴 수 있다. 
+그래프는 편집기를 열어 텍스트를 작성해야하는데 
+초반엔 반드 시 digraph g{ ...}의 구조여야만 한다. 
+이것은 그리려는 그래프의 정보가 {} 안에 기술 되고 
+sampl.dot으로 파일을 저장 후 실행해 본다 
+실행할려면 
+anaconda prompt 에서  dot sample.dot-Tpng -o sample.png
+의 경로로 가서 실행 하면 샘플 파일이 생긴다. 
+DOT문법은 노드 ID '1'과 '2' 같은 숫자로 시작 되며, 
+해당 ID의 노드에 부여할 속성을 대괄호 [] 안에 기술해야한다 
+lable은 노드안에 들어갈 문자 color 는 노드의 색 style은 노드 안쪽 색칠 방법 지정이다.
+style = filled는 노드 안쪽을 채우라는 뜻이다 matplotlib이랑 매우 비슷한 코드인다. 
+예를 들어 
+digraph g{
+1 [ label = 'x', color = 'orange', style = filled ]
+2 [ label = 'y', color = 'orange', style = filled ]
+}
+을 하면 접점이 없는 두 x 와 y의 오랜지 색으로 칠해져 있는 원이 나올 것이다. 
+여기서 shape를 추가하면 그래프의 형태를 지정한다 기본값은 원형이다. 
+digraph g{
+1 [ label = 'x', color = orange, style = filled ]
+2 [ label = 'y', color = orange, style = filled ]
+3 [ label = 'Exp', color = lightblue, style = filled, shape = box]
+}
+를 하면 기본 형태에서 옆에 Exp의 이름이 새겨진 파란색 박스형태가 나올 것이다.  
+이를 통해 Dezero의 변수와 함수를 그릴 수 있다. 방법은 노드들의 화살표를 연결하면 된다. 
+예를 들어
+digraph g{
+1 [ label = 'x', color = 'orange', style = filled ]
+2 [ label = 'y', color = 'orange', style = filled ]
+1 -> 3
+3 -> 2
+}
+이 형태일시 x 부터 EXP y 순으로 아래에서 내려오는 노드 형태가 제작된다. 
+이를 이용하여 계산 그래프를 시각화 할 수 있다. 
+변수 노드에 레이블을 달고 Variable 인스턴스 속성에 name을 추가한다. 
+import numpy as np
+from dezero import Variable
+from dezero.utils import get_dot_graph
+
+x0 = Variable (np.array(1.0))
+x1 = Variable (np.array(1.0)) 
+y = x0 + x1
+
+x0.name = x0
+x1.name x1
+y.name y
+
+txt = get_dot_graph(y. verbose=False)
+print(txt)
+with open('sample_26.dot'.'w') as o: 
+    o.write(txt)
+으로 연습하였다. 
+그리고 _dot_var 함수는 get_dot_graph 함수 전용으로 로컬에서만 사용되었으며, 
+variable 인스턴스를 건네면 인스턴스 내용을 DOT 언어로 작성된 문자열로 바꿔서 변환한다. 
+또한 변수 노드에 고유한 ID를 부여하기 위해 파이썬 내장 함수인 id를 사용하였다. 
+format 메서드의 문자열의 '{}'부분을 인수로 건넨 객체로 차례로 바꿔준다. 
+def_dot_var(v, verbose=False):
+   dot_var = '{} [label='{}', color=orange, style filled]\n'
+
+name = ' ' if v.name is None else v.name
+if verbose and v.data is not None:
+    if v.name is not None:
+        name +:' : '
+    name + str(v.shape) + ' '+ str(v.dtype)
+return dot_var.format(id(v), name)
+을 사용하여 
+x = Variable(np.random.randn(2,3))
+x.name = 'x'
+print(_dot_var(x))
+print(_dot_var(x, verbose = True))
+하면 형태가 나온다.
+_dot_func 함수는
+_dot_func_graph 함수 전용으로 로컬에서만 사용한다. 
+DeZero함수에 DOT 언어로 기술하며 
+함수와 입력 변수의 관계, 함수와 출력 변수의 관계도 DOT언어로 기술한다. 
+DeZero 함수는 Function 클래스를 상속, inputs 와 outputs라는 인스턴수 변수를 가진다. 
+식은 
+def_dot_func(f):
+
+   dot_func() '[label='[]', color lightblue, style filled, shape=box]/n
+   ret = dot_func.format(id(f), f.__class__.__name__)
+
+   dot_edge '[] -> []/n'
+   for x in f.inputs:
+       ret += dot_edge.format(id(x), id(f))
+   for y in f.outputs: 
+       ret += dot_edge.format(id(f), id(y()))
+   return ret
+
+x0 Variable (np.array(1.0))
+x1 Variable (np.array(1.0))
+y= x0 + x1
+txt = _dot_func(y.creator)
+print(txt)
+으로 작성한다. 
+Variable 클래스의 backward 메서드와 거의 같으며 
+backward 메서드는 미분값을 전파하고 미분 대신 DOT언어로 기술한 문자열 txt 에 추가한다. 
+역전파는 노드를 따라가는 순서가 중요하다. 
+그리고 함수 세대 정수값을 부여한다. 
+dot 명령 실행 까지 한번에 해주는 함수는 
+import numpy as np
+from dezero import Variable
+from dezero.utils import plot_dot_graph
+
+def goldstein(x, y):
+    z = (1 + (x + y + 1)**2 * (19 - 14*x + 3*x**2 - 14*y + 6*x*y + 3*y**2)) * w
+        (30+ (2*x - 3*y)**2 * (18 - 32*x + 12*x**2 + 48*y - 36*x*y + 27*y**2))
+    return z
+
+x = Variable(np.array(1.0))
+y Variable(np.array(1.0))
+z goldstein(x, y)
+z.backward()
+
+ x.name x
+y.name = y
+z.name Z
+plot_dot_graph (z, verbose=False, to_file='goldstein.png')
+으로 하며 변수 x와 y에서 시작하여 최종적으로 변수 z가 출력된다.
+
+테일러 급수란 어떤 미지의 함수를 동일한 미분계수를 갖는 어떤 다항함수로 근사시키는 것이다. 
+필요한 이유는 잘 모르거나 복잡한 함수를 다루기 쉽고 이해하기 쉬운 다항 함수로 대체시키기 위함이다. 
+sin 함수의 미분은 
+sin클래스와sin 함수 구현은 넘파이가 제시하는 np.sin 함수와 np.cos 함수를 사용해 구현하는것이다. 
+식은
+import numpy as np
+from dezero import Variable, Function
+
+class Sin (Function):
+    def forward(self, x):
+        y = np.sin(x)
+        return y
+
+def backward(self, gy):
+    x= self.inputs[0].data
+    gx = gy * np.cos(x)
+    return gx
+
+def sin(x):
+    return Sin() (x)
+이다.
+그리고 테일러 함수를 이용한 방법도 sin 함수의 미분을 다른 방식으로 계산 할 수 있다.
+a = 0일 때의 테일러 급수는 매클로린 전개라고 한다. 
+테일러 함수로 sin을 계산하는 방법은 
+파이썬의 math 모듈의 math.factorial함수를 사용한다. 
+그리고 threshold을 사용하여 근사치의 정밀도를 조정한다.
+미분의 중요한 용도는 함수최적화와 구체적인 함수를 대상으로 하는 최적화 계산이다. 
+여기서 최적화란 
+어떤 함수가 주어졌을 때 그최솟값을 반환하는 입력을 찾는 일이다. 
+다음은 로젠브록 함수이다. 
+포물선 모양으로 길게 뻗은 골짜기 형태이며 
+출력이 최소가 되는 x0과 x1을 찾는 것 이다. 
+로젠브록 함수의 미분을 작성하면
+import numpy as np
+from dezero import Variable
+
+def rosenbrock(x0, x1):
+    y = 100*(x1 -x0 ** 2) **2 + (x0 -1)**2
+    return y 
+x0 = Variable(np.array(0.0)) 
+x1 = Variable(np.array(2.0))
+-----------------------------
+y rosenbrock(x0, x1)
+y.backward() 
+print(x0.grad, x1.grad)
+이다.
+경사하강법은 복잡한 형상의 함수라면 기울기가 가리키는 방향에 반드시 최솟값이 존재하지는 않는다. 
+그리고 국소적으로 보면 기울기는 함수의 출력을 가장 크게 하는 방향을 나타낸다.
+로젠브록의 함수의 최솟값을 구할 때 
+사용되는 함수는 iters = 횟수 ir = 학습률 cleargrad()메서드가 있다. 
+그리고 기울기 방향에서 마이너스를 곱한 방향으로 이동한다.
+경사하강법의 코드 예시는 
+x0 = Variable(np.array(0.0))
+x1 = Variable (np.array(2.0))
+Ir = 0.001
+iters = 1000
+
+for i in range(iters): 
+    print(x0, x1)
+
+    y rosenbrock(x0, x1)
+
+    x0.cleargrad()
+    x1.cleargrad()
+    y.backward()
+
+    x0.data -= Ir * x0.grad
+    x1.data -= Ir * x1.grad
+이다.
+로젠브록과 경사하강법의 공통점은 
+로벤브록함수 같이 골짜기가 길게 뻗은 함수에서 잘 대응을 못한다.
+그래서 뉴턴 방법을 사용한다. 
+뉴턴방법은 최적화 하면 더 적은 단계로 최적의 결과를 얻을 가능성이 높고 
+계곡을 뛰어넘어 단번에 목적지에 도달한다 또한 6회의 반복 갱신만으로 도달이 가능하다. 
+뉴턴 방법 최적화는 2차 미분의 정보도 이용을 한다. 
+뉴턴 방법을 활용하여 최적화 코드 예시를 보면 
+import numpy as np 
+from dezero import Variable
+
+def f(x):
+    y= x**4 - 2 * x ** 2 
+    return y
+
+def gx2(x):
+     return 12 * x ** 2 - 4
+x = Variable (np.array(2.0))
+iters = 10
+
+for i in range(iters): 
+    print(i, x)
+    y = f(x)
+    x.cleargrad()
+    y.backward()
+   
+    x.data -= x.grad/gx2(x.data)
+이다. 이는 dezero는 2차미분을 자동으로 구현을 못하므로 수동으로 미분을 진행하고,
+ 1차 미분은 역전파, 2차 미분은 수동으로 코딩하였다. 
+뉴턴의 갱신 수식에 따라 x를 갱신하고 
+결과를 봤을 때 7번의 갱신으로 최솟값에 도달했다. 
+--------------------------------------------------------------------------------
 6주차 고차미분
 자동적으로 계산하기 위해 Dezero를 사용하는 것이다
 이전 주차까지의 역전파 구현 방식을 재검토를 진행해야 한다. 
@@ -61,12 +289,6 @@ print(x.grad) # 2차 미분
 결과값 variable(24.0)
      variable(44.0)
 -------------------------------
-
-
-
-
-
-
 --------------------------------
 import numpy as np
 from dezero.core import Function
