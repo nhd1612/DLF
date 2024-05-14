@@ -1,11 +1,235 @@
 7주차
+텐서 
+지금까지 다룬 변수 - 변수로 스칼라를 사용한다. 
+텐서 사용은 
+1. 머신러닝 데이터로 벡터나 행렬 등의 텐서가 주로 사용된다. 
+2. 텐서 사용시으 주의점 파악과 DeZero 확장을 준비한다. 
+3. 지금까지 구현한 DeZero함수들이 텐서도 다룰 수 있다는 것을 보여준다. 
+DeZero에서 구현한 함수는 
+add/mul/div/sin 등등 을 사용해봤고
+입력과 출력이 모드 수칼라라고 가정한다. 
+텐서의 처리는 
+x가 텐서일 경우 -sin 함수가 원소별로 적용된다. 
+이는 입력과 출력 텐서의 형상은 바뀌지 않는다. 
+import numpy as np 
+import dezero.functions as F 
+from dezero import Variable
+
+x = Variable(np.array([1, 2, 3], [4, 5, 6]]))
+y = F.sin(x)
+print(y)를 하면
+variable([[ 0.84147098 0.90929743 0.14112001]
+[-0.7568025 -0.95892427 -0.2794155]])라는 결과 값이 나오며 
+
+x = Variable (np.array([[1.2.3]. [4.5.6]]))
+c = Variable(np.array([[10, 20, 30], [40, 50, 60]]))
+y = x + c
+print(y)
+를 하면 
+variable([[11 22 33]
+[44 55 66]])라는 결고 값이 나온다. 
+구현한 함수들이 텐서를 이용해 계산해도 역전파 코드가 문제없이 동작하는 것을 배운다. 
+1. 스칼라를 대상으로 역전파를 구현하고 
+2. 텐서의 원소별 스칼라 계산이 이루어지면, 스칼라를 가정해 구현한 역전파는 텐서의 원소별 계산에도 성립한다.
+원소별 계산을 수행하는 DeZero 함수는 
+텐서를 사용한 계산에도 역전파를 올바르게 해낼 것을 유추 할 수 있다. 
+그리고 sum함수를 사용하면 주어진 텐서에의 모든 원소의 총합을 구해 하나의 스칼라로 출력한다. 
+코드는
+x = Variable(np.array([[1.2.3]. [4, 5, 6]]))
+c = Variable(np.array([[10, 20, 30], [40,50,60]]))
+t = x + c
+y = F.sum(t)
+print(y)
+하면 결과값은 
+variable(231)으로 나온다. 
+마지막 출력이 스칼라인 계산 그래프에 대한 역전파
+y.backward(retain_grad=True)를 실행하면 각 변수의 미분값이 구해지고
+기울기의 형상과 순전파 때의 데이터의 형상이 일치한다.(x.shape == x.grad.shape, c.shape == c.grad.shape)
+y.backward(retain_grad=True)
+print(y.grad)
+print(t.grad)
+print(x.grad)
+print(c.grad)
+을 기입하면 
+variable(1)
+variable([[111]
+          [111]])
+variable([[111]
+          [111]])
+variable([[111]
+          [111]])의 결과값이 나온다. 
+텐서를 사용한 계산에서의 역전파는 
+원소별 연산을 수행하는 함수는 입출력 데이터가 스칼라라고 가정하며 순전파와 역전파를 구현할 수 있다.
+또한텐서를 입력해도 역전파가 올바르게 성립한다.
+원소별로 계산하지 않는 함수는 
+1.텐서의 형상을 변환하는 reshape 함수
+2.행렬을 전치하는 transpose 함수
+3.두 함수 모두 텐서의 형상을 바꾸는 함수 이다.
+텐서의 형상을 바꾸는 함수
+넘파이의 reshape 함수 사용법은
+np.reshape(x, shape) 형태로 쓰며 x를 shape 인수로 지정한 형상으로 변환한다.
+x의 형상을 (2, 3)에서 (6,)으로 변환하고
+텐서의 원소 수는 같고 형상만 변환한다.
+코드식은 
+x = np.array([[1.2.3].[4, 5.6]])
+y = np.reshape(x. (6.))
+print(y)
+결과값은
+[1 2 3 4 5 6]으로 나온다. 
+reshape역전파는
+reshape 함수는 형상만 변환하므로 구체적인 계산은 아무것도 하지 않는다.
+역전파는 출력 쪽에서 전해지는 기울기를 그대로 입력 쪽으로 흘려보낸다.
+기울기의 형상이 입력의 형상과 같아지도록 변환한다.
+역전파는 출력 쪽에서부터 기울기를 전달하고 기울기를 x.data.shape 와 x.grad.shape가 일치하도록 변환하고,
+- (6,) 인 형상을 (2, 3)으로 변환한다.
+DeZero용 reshape 함수 구현하면
+1.Reshape 클래스를 초기화할 때 변형 목표가 되는 형상을 shape 인수로 받는다.
+2.순전파시에 넘파이의 reshape 함수를 사용하여 형상을 변환한다.
+3.self.x_shape = x.shape 코드에서 입력 x의 형상을 기억해 둔다.
+4.역전파에서 입력 형상 (self.x_shape)로 변환할 수 있다.
+reshape 함수 구현하는 법은
+인수 x는 ndarray 인스턴스 또는 Variable 인스턴스이다.
+from dezero.core import as variable
+det reshape(x, shape):
+    if x.shape == shape:
+        return as_variable(x)
+    return Reshape(shape) (x)
+class Reshape(Function):
+   def __init__(self, shape): 
+      selt.shape shape
+   def forward(self, x):
+      self.x_shape = x.shape 
+      y = x.reshape(self.shape)
+      return y
+   def backward(self, gy):
+      return reshape(gy. self.x_shape)
+이다.
+그리고 
+구현한 reshape 함수 사용법은 
+1. reshape 함수를 사용하여 형상을 변환시킨다.
+2. y.backward(retain_grad=True)를 수행하여 x의 기울기를 구한다.
+3. 이 과정에서 y의 기울기도 자동으로 채워진다.
+4. 채워진 기울기의 형상은 y와 같다. (y.grad.shape == y.shape)
+5. 원소는 모두 1로 이루어진 텐서이다.
+Variable에서 reshape 를 사용할려면 
+넘파이의 reshape을 사용한다. 
+x = np.random.rand(1.2.3)
+y = x.reshape ((2.3))
+y = x.reshape([2,3])
+y = x.reshape (2.3)
+그리고 DeZero의 reshape 함수를 넘파이의 reshape와 비슷하게 만들려면 
+Variable 클래스에 가변 인수를 받는 reshape 메서드를 추가한다. 
+그리고 reshape 함수를 Variable 인스턴스의 메서드 형태로 호출 할 수 있다. 
+행렬을 전치해주는 함수는 
+행렬을 전치하면 행렬의 형상이 변한다. 
+넘파이의 transpose함수는
+transpose 함수를 사용하여 전치를 알 수 있다. 
+x의 현상이 (2,3)에서 (3,2)로 변환한다. 
+텐서의 원소 자체는 그대로이고 형상만 변환한다, 
+또한 역전파에서는 출력 쪽에 전해지는 기울기의 형상만 변환한다, 
+또한 순전파때와 정확히 반대 형태이다. 
+X = np.array([[1, 2, 3]. [4, 5, 6]])
+y = np.transpose(x)
+print(y)
+하면 결과값은 
+[[14]
+[25]
+[36]]이다.
+DeZeor의 transpose의 함수를 구현하면
+class Transpose (Function):
+    def forward(self. x):
+        y = np.transpose(x)
+        return y
+    def backward(self, gy):
+        gx = transpose(gy)
+        return gx
+def transpose(x): 
+    return Transpose()(x)
+x = Variable(np.array([[1.2.3]. [4.5.6]]))
+y = F.transpose(x)
+y.backward()
+print(x.grad)
+하면 결과값은 
+variable([[111] 
+         [111]])이다.
+Variable 클래스에서 transpose 함수를 추가하는 법은 
+1. 두개의 메서드를 추가하고 
+2. 첫번째인 transpose는 인스턴스 메서드로 이용하기 위한 코드이며, 
+3. 두번째 T에는 @property데코레이터가 붙어 인스턴수 변수로 사용한다. 
+def transpose(self):
+    return dezero.functions.transpose(self)
+
+@property
+def T(self):
+    return dezero.functions.transpose(self)
+이다.
+sum의 합계 함수는 덧셈의 미분이다. 
+역전파는 출력쪽에서 전해지는 기울기를 그대로 입력쪽으로 보낸다. 
+덧셈을 수행한 후 변수 y로 부터 역전파를 진행한다. 
+X0과 X1에는 출력 쪽에서 전해준 1이라는 기울기를 두 개로 복사하여 전달한다. 
+원소 2개로 구성된 벡터 합의 역전파는 
+벡터에 sum 함수를 적용하면 스칼라를 출력한다. 
+그리고 역전파는 출력 쪽에서 전해준 값인 1을 [1,1]이라는 벡터로 확장해 전파한다. 
+원소가 2개 이상인 벡터의 합에 대한 역전파는 
+1. 기울기 벡터의 원소 수 만큼 복사 한다.
+2. 기울기를 입력변수의 형상과 같이 복사한다.
+3. 입력 변수가 2차원 이상의 배열일 때도 동일하게 적용된다. 
+DeZeor의 Sum클래스의 Sum 함수 구현하는 법은 
+Sum함ㅁ수 역전파에서는 입력변수의 형상과 같아지도록 기울기의 원소를 복사한다. 
+그리고 지정한 형상에 맞게 원소를 복사하기 위해 broadcas_to 함수를 사용한다, 
+그리고 broadcas_to 함수를 ㅏ용하여 입력변수와 형상이 같아지도록 기울기 gy의 원소를 복사한다. 
+행렬을 입력하여 벡터가 아닌 경우 동작을 확인한다. 
+코드는
+class Sum(Function):
+    def forward(self. x):
+        self.x_shape = x.shape
+        y = x.sum()
+        return y
+    det backward(selt, gy):
+        gx = broadcast_to(gy, self.x_shape)
+        return ge
+
+def sum(x):
+    return Sum()(x)이다.
+축 지정 인수는 
+1. 합계를 구할 때 축을 지정할 수 있고 
+x의 형상은 (2,3)이고 출력 y의 형상은 (3,)이다.
+Axis는 축을 뜻하며, 다차원 배열에서 화살표의 방향을 의미한다.
+식은
+x= np.array([1, 2, 3],[ 14, 5, 6]])
+ynp.sum(x. axis = 0)
+print(y)
+print(x.shape.'->' , y.shape)
+이다. 
+keepdims 인수는
+keepdims 는 입력과 출력의 차원 수(축 수)를
+똑같게 유지할지 정하는 플래그이며.
+keepdims=True로 지정하면 축의 수가 유지한다.
+keepdims=False로 지정하면 y의 형상은 스칼라이다.
+DeZero의 sum 함수에서 axis와 keepdims 인수 지원하는 방법은
+sum 함수의 역전파에 적용되는 이론은 동일함하며
+입력 변수와 형상이 같아지도록 기울기의 원소를 복사한다.
+Sum 클래스를 초기화할 때 axis와 keepdims를 입력받아 속성으로 설정한다.
+순전파에서 이 속성들을 사용해 합계를 구한다.
+역전파시 broadcast to 함수를 사용하여 입력 변수의 형상과 같아지도록 기울기 원소 복사한다.
+브로드캐스트 함수는 
+1. 넘파이 브로드캐스트
+서로 다른 형상(shape)을 가진 배열들간에 산술 연산을 수행하기 위해 배열의 형상을 조정하고
+브로드캐스트를 사용하여 작은 배열을 큰 배열에 맞추어 연산을 수행할 수 있다.
+2.DeZero에서도 넘파이와 같은 브로드캐스트 지원
+sum 함수를 구현시 역전파에서 구현되지 않은 broadcast_to 함수를 이용했고
+broadcast_to 함수를 구현한다.
+넘파이의 브로드케스트 함수는
+넘파이의 np.broadcast_to(x, shape) 함수이며
+원래는 (3,) 형상이던 1차원 배열의 원소를 복사하여 (2, 3) 형상으로 바꿈
+np.broadcast_to 함수의 역전파
+입력 x의 형상과 같아지도록 기울기의 합을 구한다.
+sum_to(x, shape) 함수가 있으면 간단하게 해결된다.
 
 8주차
 선형 회귀
 42.4 - 무제점 중간 계산값이 존재한다. = 계산시에도 메모리를 차지하고 있기 때문에 메모리 최적화를 위한 코드이다.
 mean_square_error 코드를 사용한다. 
-코드 
-
 신경망
 43.1 아핀 변환 - 입력 x 와 매개변수 W 사이에서 행렬 곱을 구하고 b를 더하는 것이다. 선형 변화는 신경망에서 완전연결계층
 선형 변환을 linear 함수로 구현
@@ -14,15 +238,14 @@ def linear_simple(x, W, b =None):
   t = matmul(x, W)
   if b is None:
     return t
-
     y = t+b
     t.data = None
     return y
-43.2 비선형 데이터 
+ 비선형 데이터 
 선형 회귀로는 문제를 풀 수 없다.
 그래서 신경망을 이용해야함
-43.3 신경망은 비선형 변환을 수행해야한다. 
-43.4 선형 변화 > 활성화 함수 > 선형 변환 > 활성화 함수 > ...
+ 신경망은 비선형 변환을 수행해야한다. 
+ 선형 변화 > 활성화 함수 > 선형 변환 > 활성화 함수 > ...
 서선형 변환과 활성화 함수를 순서대로 적용한다.
 추론의 정확성을 높이려면 학습이 필요하다.
 손실함수의 출력을 최소화하는 매개변수를 찾는다.
@@ -32,7 +255,6 @@ def predict(x):
   y = F.sigmoid(y)
   y = F.linear(y, W2, b2)
   return y  
-44.2 Layer 클래스 
+ Layer 클래스 
 변수를 변환시켜줌
 Fuction과 다른점은 매개변수를 유지함
-
