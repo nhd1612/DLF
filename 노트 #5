@@ -1,0 +1,76 @@
+Optimizer 밑 데이터 전처리에 대해서 
+Optimizer 클래스는 
+매게 변수 갱신을 위한 기반 클래스이다. 
+또한 구체적인 최적화 기법은 Optimizer 클래스를 상속한 자식클래스에서 구현한다. 
+초기화 메서드는 target과 hooks라는 두개의 인스턴스 변수를 초기화한다. 
+구체적인 매개변수 갱신은  update_one 메서드에서 수행, 자식 클래서에서 재정의 된다. 
+또한 전처리는 add_hook 메서드를 사용하여 전처리를 진행한다.
+식은 
+class Optimizer:
+  def init (self):
+    self.target None
+    selt.hooks []
+
+  def setup(self, target):
+    self target target
+    return self
+
+  def update(self):
+    params = [p for p in self.target.params() if p.grad is not None]
+    for f in self.hooks:
+      f(params)
+
+    for param in params:
+      self.update_one(param)
+
+  def update_one(self, param):
+    raise NotimplementedError()
+
+  def add_hook(self, f):
+    self.hooks.append(f)
+SGD 클래스 구현은
+경사하강법으로 매개변수를 갱신하는 클랴스를 구현합니다.
+SGD 클래스는 Optimizer 클래스를 상속합니다. 
+또한 __init__메서드는 학습률을 받아 초기화를 진행한다. 
+update_one 메서드에서 매개변수 갱신 코드를 구현할 수 있다. 
+구현식은 
+class SGD(Optimizer):
+  def __init__(self, Ir=0.01):
+    super().__init__()
+    self.Ir = Ir
+ 
+  def update_one(self, param):
+    param.data = self.Ir param.grad.data
+SGD 클래스를 사용하여 회귀 문제를 풀려면 
+MLP 클래스를 사용하여 모델을 생성하고
+SGD클래스로 매개 변수를 갱신한다. optimizer.update()를 사용한다.
+다음은 기울기를 이용한 최적화 기법이다. 
+Momentum, AdaGrad, AdaDelta, Adam이 있으며
+OPtimizer 클래스를 이용해 다양한 최적화 기법을 필요에 따라 손쉽게 전환한다. 
+Optimizer 클래스를 상속하여 다양한 최적화 기법을 구현이 가능하다. 
+momentum 기법이란 
+W는 갱신할 가중치 매개 변수이며, 𝜕𝐿/𝜕W는 기울기. n은 학습률을 말한다. 
+v는 물리에서 말하는 속도에 해당하며, av는 물체가 아무런 힘을 받지 않을때 서서히 감속되는 역활을 한다.
+MomentumSGD 구현 코드는 
+속도에 해당하는 데이터, 딕셔너리 타입의 인스턴수 변수 self.vs에 유지가 되는 것이며 
+초기화 시에는 vs에 아무것도 담겨 있지 않다. 
+또한 Update_one()이 처음 호출될 때 매개변수와 같은 타입의 데이터를 생성한다. 
+구현한 학습코드에서 손쉽게 Momentum으로 전환 되는 것을 볼 수 있다. 
+class MomentumSGD(Optimizer):
+  def __init__(self. Ir=0.01. momentum = 0.9):
+    super().__init__()
+    self.Ir = Ir
+    self.momentum = momentum
+    self.vs = {}
+  
+  def update_one(self, param):
+    v_key id(param)
+    if v_key not in self.vs:
+      xp = cuda.get_array_module(param.data) 
+      self.vs[v_key] xp.zeros_like (param.data)
+    
+    v = self.vs[v_key]
+    v *= self.momentum
+    v self.Ir param.grad.data
+    param.data += v
+이곳에서 optimizer = MomentumSGD(lr)로 변경하면 된다. 
