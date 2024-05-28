@@ -1,0 +1,119 @@
+
+왜우리가 학습을 시켜야 하는 모델 안에는 파라미터의 학습안에서 최적의 파라미터 값과아키텍처가 들어가 있는데 그 두개가 있어야 이모델이웹에 추천시스템으로 사용되든 디바이스 혹은 언어를 번역해주는 디바이스, 웹엑스등 외부로 보내기 위해 외부 파일로 저장하고 읽기위해 사용된다. 
+이 모델이란 배포되고 읽어서 추론을하기 위해 존재한다.
+DeZero에서 사용하기위해 Parameter을 사용한다.
+이 파라미터 클래스는 데이터를 모두 ndarray인스턴스로 보관을 하고 읽을 때 또한 ndarray로 읽는다.
+넘파이의 함수를 사용한다. 
+np.save 와 np.load를사용하여 저장 및 읽기를 사용한다. 
+여러개의 ndarray 인스턴스를 읽거나 저장할려면 
+np.savez('파일명', x1 = x1, x2= x2)로 여러 인스턴스를저장한다.
+읽을 때는 arrays['x1'] 이나 array['x2']처럼 원하는 키워드 꺼내온다.
+53.1 예시에선 가중치 값들을 파일로 save하고 load하겠다는 의미이다. 
+** = 딕셔너리 타입의 인수를 저장할때 사용한다.
+
+x1 = np.array([1, 2, 3])
+x2 = np.array([4, 5, 6])
+data = {'x1':x1, 'x2':x2}
+np.savez('test.npz', **data)
+
+arrays = np.load('test.npz')
+x1 = arrays[ 'x1']
+x2 = arrays[ 'x2']
+print(x1)
+print(x2)
+이렇게 예시를 작성하면 x1값과 x2값이 순서대로 나올 수 있다.   
+
+Layer 클래스 안의 Parameter을 평탄화를 위해 꺼낸다.
+레이터클래스안에 파라미터가 중첩되어 존재한다.
+이 중첩된 구조를 3차원 형태를 1차원 형태로 변경을 위해사용되는것이 _flatten_params메서드를 사용한다. 
+layer._flatten_params(3차원) 으로 하면 1차원적으로 변경
+_params에서 파라미터의 인스턴스 변수 이름 혹은 레이어 인스턴스 변수 이름을 담는다.
+실제 객체는 obj = self.__dict__[name]으로 꺼내야만 한다.
+꺼내는 객체가 parameter일 경우 끝내지만 layer일경우 다시 한번 더 안에 있는 parameter를 꺼낸다.   
+def save_weights(self, path):
+  self.to_cpu()
+
+  params_dict = {}
+  self._flatten_params(params_dict)
+  array_dict = {key: params.data for key, param in params_dict.items()
+  if param is not None}
+
+  try:
+    np.savez_compressed(path, **array_dict)
+  except (Exception, Keyboardlnterrupt) as e:
+    if os.path.exists(path):
+      os.remove(path)
+    raise
+
+def load_weight(self, path):
+  npz = np.load(path)
+  params_dict = {}
+  self._flatten_params(params_dict)
+  for key, param in params_dict.items():
+    parma,data = npz[key]
+이 예시이다. 
+to_cpu()는 메인메모리 존재여부를 파악할때 사용한다.   
+과대적하에서 일어나는 주요 원인은
+모델의 표현력이 너무 깊다. 
+이것을 해결하려면 
+1.중간의 노드들을 삭제한다. 
+2. 배치 정규화 -배치값이 한쪽으로만 치우쳐 있을 경우 평탄화를 진행하는 것
+드롭아웃은
+모델을 지나치게 높은 것들은 중간의 노드 값을 없애는 방법
+이를 통해 과대적합을 피할 수 있게 한다. 
+학습단계와 테스트 단계를 분리해서 구조화한다.
+학습 모델은 무작위로 골라 뉴런을 삭제하는 것
+예시 코드
+10 개의 뉴런으로 이루어진 층이 있고 그다음 층에서 드롭아웃 계층을 사용하여60%의 뉴런을 무작위로 삭제하는 코드
+dropout_ratio = 0.6
+x = np.ones(10)
+# 학습시
+mask = np.rando.rand(10) >dropout_datio
+y = x*mask
+#테스트 
+scale = 1- dropout_ratio
+y = x*scale
+y = x * mask 는 mask에서 값이 False인 원소에 대응하는 x의 원소를 0으로 설정한다.
+역 드롭아웃은
+스케일 맞추기를 학습할 때 수행한다. 
+테스트의 속도가 향상되고 추론 처리만을 이용하는 경우에 바람직한 특성이다.
+54.4
+CNN
+이미지 인식 및 음성인식, 자연어 처리 등 다양한 분야에서 사용한다.
+데이비드 허블 및 토르스텐 비셀이 시각 피질의 구도에대한 연구를 진행함
+층을 제작한다. 1. 입력층 2. 합성곱층 1 3. 합성곱층 2 모든 픽셀에 연결 x 합성곱층 뉴련의 수용장 안에 있는 픽셀만 연결된다. 
+과거의 구조와 달리  Conv -ReLU- pool - Conv -ReLU- pool -Linear - ReLu -Linear - ReLu -Linear으로 진행된다.
+합성곱의연산은 
+입력데이터에서 필터에 동일한 위치와 곱을 진행 한 값의 합이 나타난다.//55.2를 보면 보기로 나온다.
+편향은 입력데이터에서필터를 진행한 값을 각각의 지정한 편향값을 더한다.
+패딩 - 합성곱층의 주요 처리 전에 입력 데이터 주위에 고정값을 채운다. 
+패딩을 사용하는 이유는 출력 크기를 조정하기 위함 
+이유는  입력 데이터와 필터의 곱을 통해 원활한 출력 데이터를 추출하기 위함이다. 
+패딩의 제한 수는 없고 임의 값을 지정하면 된다. 
+가로 세로 방향의패딩을 서로 다르게 설정이 가능하다. 
+스트라이드 - 필터를 적용하는 위치의 간격을 말한다 
+입력 데이터가 7,7일시 스트라이드가2로 설정되면 출력데이터가 3,3으로 변경된다 즉 축소 된다. 
+이것도 가로 세로 다르게 값을 설정할 수 있다.
+패딩을 키우면 출력데이터의 크기 커지고 스트라이드를 키우면 출력데이터가 작아진다.
+get_conv_outsize
+input_size는 입력 데이터의 크기, kernel_size는 커널의 크기,strid는 스트라이드의 크기,pad는 패딩의 크기이다.
+
+H, W 4, 4 # Input size
+KH, KW 3,3 # Kernel size
+SH, SW 1.1 # Kernel stride 스트라이드를 가로 1 세로 1 씩 입력데이터에 커널을 계산하여 
+PH, PW 1, 1 # Padding size 패딩을 가로 1 세로 1 증가
+
+OH = get_conv_outsize(H. KH, SH, PH)
+OW = get_conv_outsize(W, KW, SW, PW)
+print(OH, OW)
+
+56.2
+
+플링층
+플링층은 가로 세로공간을 작게 만드는 연산
+MAX플링은 가장큰 값만 남김 
+이는 특징이 뛰어난 위치를 나타내주기때문에 사용한다.  
+플링층의 주요 특징은 
+특징이 없는 것들은 삭제 = 매개변수가 없다.
+채널의수가 변하지않는다.
+위치 변화에 영향을 덜 받는다 .
