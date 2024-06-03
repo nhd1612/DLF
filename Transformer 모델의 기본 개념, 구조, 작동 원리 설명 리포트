@@ -48,3 +48,6 @@ Positional Encoding
 그리고 각각의 벡터들이 한꺼번에 들어가므로 위치정보가 없는 상태입니다. 
 따라서, 위치값을 저장해주기 위해 positional encoding을 함께 수행해줍니다.
 다시말해, 임베딩된 벡터에 positional encoding vector를 더해주어 최종적으로 input으로 들어갈 벡터를 생성하게 됩니다.
+예를 들어 추가적인 설명을 드리겠습니다. 'This is my car'이라는 문장이 주어졌을 때, 문장을 구성하는 각각의 단어는
+그에 상응하는 인덱스 값에 매칭이 되고, 이 인덱스 값들은 Input Embedding
+
